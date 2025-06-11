@@ -586,6 +586,9 @@
                 const piece = this.board[fromRow][fromCol];
                 const capturedPiece = this.board[toRow][toCol];
                 
+                // Store the original king position before the move
+                const originalKingPos = { ...this.kingPositions };
+                
                 this.board[toRow][toCol] = piece;
                 this.board[fromRow][fromCol] = null;
                 
@@ -594,7 +597,16 @@
                 }
                 
                 const moveNotation = this.getMoveNotation(fromRow, fromCol, toRow, toCol, piece, capturedPiece);
-                this.moveHistory.push({ from: [fromRow, fromCol], to: [toRow, toCol], notation: moveNotation });
+                
+                // Store complete move information including captured piece and king positions
+                this.moveHistory.push({ 
+                    from: [fromRow, fromCol], 
+                    to: [toRow, toCol], 
+                    notation: moveNotation,
+                    piece: { ...piece },
+                    capturedPiece: capturedPiece ? { ...capturedPiece } : null,
+                    originalKingPositions: originalKingPos
+                });
                 
                 this.currentPlayer = this.currentPlayer === 'white' ? 'black' : 'white';
                 this.updateGameStatus();
@@ -898,7 +910,7 @@
             undoLastMove() {
                 if (this.moveHistory.length === 0 || this.isAIThinking) return;
                 
-                // Undo last two moves (player and AI)
+                // Undo last two moves (player and AI) or just one if only one move exists
                 const movesToUndo = this.moveHistory.length >= 2 ? 2 : 1;
                 
                 for (let i = 0; i < movesToUndo; i++) {
@@ -908,17 +920,16 @@
                     const [fromRow, fromCol] = lastMove.from;
                     const [toRow, toCol] = lastMove.to;
                     
-                    // Move piece back
-                    const piece = this.board[toRow][toCol];
-                    this.board[fromRow][fromCol] = piece;
-                    this.board[toRow][toCol] = null;
+                    // Restore the piece to its original position
+                    this.board[fromRow][fromCol] = lastMove.piece;
                     
-                    // Update king position if necessary
-                    if (piece && piece.type === 'king') {
-                        this.kingPositions[piece.color] = [fromRow, fromCol];
-                    }
+                    // Restore the captured piece (if any)
+                    this.board[toRow][toCol] = lastMove.capturedPiece;
                     
-                    // Switch player
+                    // Restore king positions
+                    this.kingPositions = lastMove.originalKingPositions;
+                    
+                    // Switch player back
                     this.currentPlayer = this.currentPlayer === 'white' ? 'black' : 'white';
                 }
                 
